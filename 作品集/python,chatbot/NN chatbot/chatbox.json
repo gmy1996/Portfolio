@@ -1,0 +1,124 @@
+{
+  "intents": [
+    {
+      "tag": "greeting",
+      "patterns": [
+        "Hi",
+        "Hey",
+        "How are you",
+        "Is anyone there?",
+        "Hello",
+        "Good day"
+      ],
+      "responses": [
+        "Hey!",
+        "Hello, thanks for visiting",
+        "Hi there, what can I do for you?",
+        "Hi there, how can I help?"
+      ]
+    },
+    {
+      "tag": "goodbye",
+      "patterns": ["Bye", "See you later", "Goodbye"],
+      "responses": [
+        "See you later, thanks for visiting",
+        "Have a nice day",
+        "Bye! Come back again soon."
+      ]
+    },
+    {
+      "tag": "thanks",
+      "patterns": [
+          "Thanks", 
+          "Thank you", 
+          "That's helpful", 
+          "Thank's a lot!",
+          "Cheers"
+         ],
+      "responses": ["Happy to help!", "Any time!", "My pleasure"]
+    },
+    {
+      "tag": "items",
+      "patterns": [
+        "Which items do you have?",
+        "What kinds of items are there?",
+        "What do you sell?"
+      ],
+      "responses": [
+        "We sell clothes and shoes",
+        "We have clothes and shoes"
+      ]
+    },
+    {
+      "tag": "clothes",
+      "patterns": [
+        "I want to buy clothes.",
+        "Which brand of clothes do you have?",
+        "What kinds of clothes are there?",
+        "What brand of clohtes do you sell?",
+        "Are there any clothes?"
+      ],
+      "responses": [
+        "We sell Nike, Adidas, Banlieue, Jordan, Under Armour and Puma",
+        "We have Nike, Adidas, Banlieue, Jordan, Under Armour and Puma"
+      ]
+    },
+    {
+      "tag": "shoes",
+      "patterns": [
+        "I want to buy shoes.",
+        "Which brand of shoes do you have?",
+        "What kinds of shoes are there?",
+        "What brand of shoes do you sell?",
+        "Are there any shoes?"
+      ],
+      "responses": [
+        "We sell Nike, Adidas, Converse, Jordan, Under Armour, Puma, Vans and Fila",
+        "We have Nike, Adidas, Converse, Jordan, Under Armour, Puma, Vans and Fila"
+      ]
+    },
+    {
+      "tag": "payments",
+      "patterns": [
+        "How can I pay for these?",
+        "Do you take credit cards?",
+        "Do you accept Mastercard?",
+        "Can I pay with Paypal?",
+        "Are you cash only?",
+        "How about the payment?"
+      ],
+      "responses": [
+        "We accept VISA, Mastercard and Paypal",
+        "We accept most major credit cards, and Paypal",
+        "You can use Paypal or credit cards"
+      ]
+    },
+    {
+      "tag": "delivery",
+      "patterns": [
+        "How long does delivery take?",
+        "How long does shipping take?",
+        "When do I get my delivery?"
+      ],
+      "responses": [
+        "Delivery takes 2-4 days",
+        "Shipping takes 2-4 days",
+        "About 2-4 days",
+        "Maybe 3 days"
+      ]
+    },
+    {
+      "tag": "price",
+      "patterns": [
+        "How about the price?",
+        "Are these brand expensive?",
+        "How much are these clothes and shoes?"
+      ],
+      "responses": [
+        "The cheapest is 15 pounds, the most expensive is 150 pounds",
+        "In the range of 15-150 pound.",
+        "We don't sell too expensive items, all of them are under 150 pounds"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,675 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+
+data=read.csv("cw_data.csv")
+library(dplyr)
+library(kableExtra)
+library(knitr)
+library(cluster.datasets)
+library(cluster)
+library(e1071)
+library(fpc)
+library(clv)
+library(gridExtra)
+library(ggplot2)
+data
+
+```
+```{r}
+# Centrality Measures:
+# Mode,Mean,Median
+#Dispersion Measures:
+#Standard Deviation,Range,Interquartile Range
+
+#find NA
+Na=t(sapply(data[,1:21],function(x) sum(is.na(x))))
+num_Na=as.data.frame(Na)#we need the data as a row
+#quantile
+quantile_all=summarise_all(data[,1:21],quantile,na.rm=T)
+quantile_new=quantile_all[c(2,4),]
+#Mode:
+max(table(data[,22]))
+#Mean,Median,Max,Min,IQR,SD,NA's,quantile_0.25,quantile_0.75
+summary_table=rbind(
+summarise_all(data[,1:21],mean, na.rm = TRUE),
+summarise_all(data[,1:21],median, na.rm = TRUE),
+summarise_all(data[,1:21],max, na.rm = TRUE),
+summarise_all(data[,1:21],min, na.rm = TRUE),
+summarise_all(data[,1:21],IQR, na.rm = TRUE),
+summarise_all(select(data,1:21),funs(sd),na.rm = TRUE),
+num_Na,quantile_new)
+
+row.names(summary_table)=c("Mean","Median","Max","Min","IQR","SD","NA's","1st_QU","3rd_QU")
+
+summary_table
+write.csv(summary_table,file = "table1.csv",row.names = TRUE,col.names = TRUE)
+```
+ii.
+```{r}
+
+
+#norminal 
+pie(table(data$class),col=c("gold","blue","red"))
+ 
+ggplot(data)+geom_point(aes(x=field,y=g,fill=class,color=class),alpha=0.3)+facet_wrap(~class)+scale_y_continuous(limits = c(10,20))+theme_bw()
+#+ggtitle("the scatter plot of magnitude (green) divided by class")
+
+
+#ratio
+ggplot(data) + geom_point(bins=20,aes(x=ra,y=dec, fill=class,color=class)) +
+facet_wrap(~class) 
+#ggtitle("astronomical coordinates divided by class")
+
+ggplot(data)+geom_point(aes(x=flux,y=i,color="i"),alpha=0.3)+geom_point(aes(x=flux,y=u,color="u"),alpha=0.3)+geom_point(aes(x=flux,y=g,color="g"),alpha=0.3)+geom_point(aes(x=flux,y=r,color="r"),alpha=0.3)+geom_point(aes(x=flux,y=z,color="z"),alpha=0.3)+facet_wrap(~class)+scale_y_continuous(limits = c(10,20))+theme_bw()
+
+
+
+
+```
+iii.Produce histograms for each input attribute and characterise all the distributions according to  shape. Provide details on how you created the histograms. You may also use descriptive statistics  to help you characterise the shape of the distribution.***
+
+```{r}
+
+ggplot(data, aes(x = camcol, color = class,fill = class)) +
+geom_histogram(binwidth = 1, alpha=0.6) +
+scale_x_continuous(name = "camcol number", breaks = seq(min(data$camcol,na.rm = TRUE),max(data$camcol,na.rm = TRUE),1)) +
+scale_y_continuous(name = "Frecuency") +
+theme_minimal() 
+
+#ordinal
+ggplot(data)+geom_histogram(aes(x=mjd,fill=class),binwidth = 500, alpha=0.6,color="gold4") +
+scale_x_continuous(name = "mjd", breaks = seq(min(data$mjd,na.rm = TRUE),max(data$mjd,na.rm = TRUE),500)) +
+scale_y_continuous(name = "Frecuency") +
+theme()
+
+ggplot(data, aes(x = ra, color = class,fill = class)) +
+geom_histogram(binwidth = 10, alpha=0.6) +
+scale_x_continuous(name = "ra",breaks = seq(8,265,20)) +
+scale_y_continuous(name = "Frecuency") +
+theme_minimal()
+
+ggplot(data, aes(x = u, color = class,fill = class)) +
+geom_histogram(binwidth = 1, alpha=0.6) +
+scale_x_continuous(name = "u",breaks = seq(12,20,1)) +
+scale_y_continuous(name = "Frecuency") +
+theme_minimal()
+
+ggplot(data, aes(x = flux, color = class,fill = class)) +
+geom_histogram(binwidth = 10, alpha=0.6) +
+scale_x_continuous(name = "flux",breaks = seq(9,320,30)) +
+scale_y_continuous(name = "Frecuency") +
+theme_minimal()
+
+ggplot(data, aes(x = field, color = class,fill = class)) +
+geom_histogram(binwidth = 1, alpha=0.6) +
+scale_x_continuous(name = "field number") +
+scale_y_continuous(name = "Frecuency") +
+theme_minimal()
+```
+2. Explore the relationships between the attributes, and between the class and the attributes
+i
+```{r}
+
+cor(data$r,data$g,use = "pairwise.complete.obs", method = c("pearson"))
+ggplot(data[,c("r","g","class")])+geom_point(aes(x=r,y=g,color=class),alpha=0.4)+
+  xlab("magnitude (red)")+
+  ylab("magnitude (green)")
+  #ggtitle("the relationship between r and g")
+```
+ii
+```{r}
+cor(data$r,data$mjd,use = "pairwise.complete.obs",method = c("spearman"))
+
+ggplot(data)+geom_point(aes(mjd,r,color=class),alpha=0.4)+
+  ylab("magnitude (red)")+
+  xlab("magnitude (mjd)")
+#+ggtitle("the relationship between r and g")
+```
+iii
+```{r}
+x = data[order(data$u),] # sort by Length
+x$cls = factor(x$class) # it must be a factor
+x$color[x$cls=="GALAXY"] = "red"
+x$color[x$cls=="QSO"] = "blue"
+x$color[x$cls=="STAR"] = "darkgreen"
+
+dotchart(x$u,cex=.7,labels=row.names(x),groups= x$cls,xlab="u", gcolor="black", color=x$color)
+dotchart(x$z,cex=.7,labels=row.names(x),groups= x$cls,xlab="z", gcolor="black", color=x$color)
+dotchart(x$redshift,cex=.7,labels=row.names(x),groups= x$cls,xlab="redshift", gcolor="black", color=x$color)
+
+```
+iv
+```{r}
+par(mfrow=c(1,3))
+data %>% filter(class =="GALAXY") %>% .[,c(2)] %>%
+boxplot(las=3, ylab="data",xlab="dia")
+data %>% filter(class =="GALAXY") %>% .[,c(4,5,14,16)] %>%
+boxplot(las=3, ylab="data")
+data %>% filter(class =="GALAXY") %>% .[,c(6:10,15)] %>%
+boxplot(las=3, ylab="data")
+
+par(mfrow=c(1,3))
+data %>% filter(class =="STAR") %>% .[,c(2)] %>%
+boxplot(las=3, ylab="data",xlab="dia")
+data %>% filter(class =="STAR") %>% .[,c(4,5,14,16)] %>%
+boxplot(las=3, ylab="data")
+data %>% filter(class =="STAR") %>% .[,c(6:10,15)] %>%
+boxplot(las=3, ylab="data")
+
+par(mfrow=c(1,3))
+data %>% filter(class =="QSO") %>% .[,c(2)] %>%
+boxplot(las=3, ylab="data",xlab="dia")
+data %>% filter(class =="QSO") %>% .[,c(4,5,14,16)] %>%
+boxplot(las=3, ylab="data")
+data %>% filter(class =="QSO") %>% .[,c(6:10,15)] %>%
+boxplot(las=3, ylab="data")
+
+```
+
+4
+```{r}
+mean_method=data
+median_method=data
+zero_method=data
+
+#replace with zero
+for(i in 1:21){
+  zero_method[,i]=replace(zero_method[,i],is.na(zero_method[,i]),0)
+}
+
+Mean_values=aggregate(data,by=list(data$class),mean,na.rm=T)
+
+#replace with mean
+for(i in 1:21){
+  mean_method[mean_method$class=="GALAXY",i]=replace(mean_method[mean_method$class=="GALAXY",i],is.na(mean_method[mean_method$class=="GALAXY",i]),Mean_values[1,i+1])
+  mean_method[mean_method$class=="QSO",i]=replace(mean_method[mean_method$class=="QSO",i],is.na(mean_method[mean_method$class=="QSO",i]),Mean_values[2,i+1])
+  mean_method[mean_method$class=="STAR",i]=replace(mean_method[mean_method$class=="STAR",i],is.na(mean_method[mean_method$class=="STAR",i]),Mean_values[3,i+1])
+}
+
+
+Median_values=aggregate(data,by=list(data$class),median,na.rm=T)
+
+#replace with median
+for(i in 1:21){
+  median_method[median_method$class=="GALAXY",i]=replace(median_method[median_method$class=="GALAXY",i],is.na(median_method[median_method$class=="GALAXY",i]),Median_values[1,i+1])
+  median_method[median_method$class=="QSO",i]=replace(median_method[median_method$class=="QSO",i],is.na(median_method[median_method$class=="QSO",i]),Median_values[2,i+1])
+  median_method[median_method$class=="STAR",i]=replace(median_method[median_method$class=="STAR",i],is.na(median_method[median_method$class=="STAR",i]),Median_values[3,i+1])
+}
+
+mean_mean=aggregate(mean_method[,c(1,2,4:6,13)],by=list(mean_method$class),mean)
+write.csv(mean_mean,file = "mean_mean.csv",row.names = TRUE,col.names = TRUE)
+median_mean=aggregate(median_method[,c(1,2,4:6,13)],by=list(median_method$class),mean)
+write.csv(median_mean,file = "median_mean.csv",row.names = TRUE,col.names = TRUE)
+
+mean_median=aggregate(mean_method[,c(1,2,4:6,13)],by=list(mean_method$class),median)
+write.csv(mean_median,file = "mean_median.csv",row.names = TRUE,col.names = TRUE)
+median_median=aggregate(median_method[,c(1,2,4:6,13)],by=list(median_method$class),median)
+write.csv(median_median,file = "median_median.csv",row.names = TRUE,col.names = TRUE)
+```
+
+5
+```{r}
+
+#centering：  
+mean_cen=mean_method
+median_cen=median_method
+zero_cen=zero_method
+mean_cen=as.data.frame(scale(mean_cen[,1:21],center=T,scale=F))
+median_cen=as.data.frame(scale(median_cen[,1:21],center=T,scale=F))
+zero_cen=as.data.frame(scale(zero_cen[,1:21],center=T,scale=F))
+
+#standardisation：  
+mean_stan=mean_method
+median_stan=median_method
+zero_stan=zero_method
+mean_stan=as.data.frame(scale(mean_stan[,1:21],center=T,scale=T)) 
+median_stan=as.data.frame(scale(median_stan[,1:21],center=T,scale=T)) 
+zero_stan=as.data.frame(scale(zero_stan[,1:21],center=T,scale=T)) 
+
+
+
+
+#normalisation
+mean_nor=mean_method
+median_nor=median_method
+zero_nor=zero_method
+for (x in 1:21){
+  mean_nor[,x] = (mean_nor[,x] - min(mean_nor[,x])) / (max(mean_nor[,x]) - min(mean_nor[,x]))
+}
+for (x in 1:21){
+  median_nor[,x] = (median_nor[,x] - min(median_nor[,x])) / (max(median_nor[,x]) - min(median_nor[,x]))
+}
+for (x in 1:21){
+  zero_nor[,x] = (zero_nor[,x] - min(zero_nor[,x])) / (max(zero_nor[,x]) - min(zero_nor[,x]))
+}
+
+
+mean_cen[,c(2,4:8)]
+write.csv(mean_cen[,c(2,4:8)],file = "mean_cen.csv",row.names = TRUE,col.names = TRUE)
+mean_stan[,c(2,4:8)]
+write.csv(mean_stan[,c(2,4:8)],file = "mean_stan.csv",row.names = TRUE,col.names = TRUE)
+mean_nor[,c(2,4:8)]
+write.csv(mean_nor[,c(2,4:8)],file = "mean_nor.csv",row.names = TRUE,col.names = TRUE)
+```
+1.6.i
+```{r}
+sdss1=data
+sdss1=sdss1[1:10006,]
+#sdss1=sdss1[duplicated(sdss1[,"specobjid"]),]
+sdss1[sdss1$class=="GALAXY",2]=replace(sdss1[sdss1$class=="GALAXY",2],is.na(sdss1[sdss1$class=="GALAXY",2]),Median_values[1,3])
+sdss1[sdss1$class=="QSO",2]=replace(sdss1[sdss1$class=="QSO",2],is.na(sdss1[sdss1$class=="QSO",2]),Median_values[2,3])
+sdss1[sdss1$class=="STAR",2]=replace(sdss1[sdss1$class=="STAR",2],is.na(sdss1[sdss1$class=="STAR",2]),Median_values[3,3])
+
+sdss1=sdss1[1:10002,]
+sdss1=sdss1[,-c(2)]
+
+```
+1.6.ii
+```{r}
+
+sdss2=data[,c(4:12,14,15,18:20)]
+apply(sdss2, 2, FUN = function(x){sum(is.na(x))})
+sdss2=na.omit(sdss2)
+```
+
+1.7
+
+```{r}
+sdss=data
+sdss=sdss[1:10006,]
+#replacement with mean 
+for (i in c(4,6:10,12:14)){
+  sdss[sdss$class=="GALAXY",i]=replace(sdss[sdss$class=="GALAXY",i],is.na(sdss[sdss$class=="GALAXY",i]),Mean_values[1,i+1])
+  sdss[sdss$class=="QSO",i]=replace(sdss[sdss$class=="QSO",i],is.na(sdss[sdss$class=="QSO",i]),Mean_values[2,i+1])
+  sdss[sdss$class=="STAR",i]=replace(sdss[sdss$class=="STAR",i],is.na(sdss[sdss$class=="STAR",i]),Mean_values[3,i+1])
+}
+#replacement with median
+for (i in c(2,5,18)){
+  sdss[sdss$class=="GALAXY",i]=replace(sdss[sdss$class=="GALAXY",i],is.na(sdss[sdss$class=="GALAXY",i]),Median_values[1,i+1])
+  sdss[sdss$class=="QSO",i]=replace(sdss[sdss$class=="QSO",i],is.na(sdss[sdss$class=="QSO",i]),Median_values[2,i+1])
+  sdss[sdss$class=="STAR",i]=replace(sdss[sdss$class=="STAR",i],is.na(sdss[sdss$class=="STAR",i]),Median_values[3,i+1])
+}
+#replacement with 0
+for (i in c(3,11,15:17,19:21)){
+  sdss[,i]=replace(sdss[,i],is.na(sdss[,i]),0)
+}
+
+apply(sdss, 2, FUN = function(x){sum(is.na(x))})
+
+
+#remove outliers
+rmv_outliers = function(df, field){
+m = mean(df[,field])
+s = sd(df[,field])
+thrs = 3*s
+out = df[df[,field]<=(m+thrs) & df[,field]>=(m-thrs),]
+return(out)
+}
+for (i in c(2,4:10,12,14,18)){
+  sdss=rmv_outliers(sdss,i)
+}
+nrow(data[data$class=="GALAXY",])
+
+beifen_sdss=sdss
+sdss_PCA=beifen_sdss
+sdss=sdss[,c(4:12,14,15,18,20)]
+
+write.csv(sdss,file = "sdss.csv",row.names = TRUE,col.names = TRUE)
+
+```
+
+
+PCA
+```{r}
+sdss
+sdss_PCA
+
+data.stand = as.data.frame(scale(sdss),na.rm=T)
+sdss.stand = as.data.frame(scale(sdss_PCA[,1:21]),na.rm=T)
+sdss.stand=sdss.stand[,-c(1)]
+
+sapply(data.stand,sd,na.rm=T)
+sapply(data.stand,mean,na.rm=T)
+sapply(sdss.stand,sd,na.rm=T)
+sapply(sdss.stand,mean,na.rm=T)
+#data.stand=na.omit(data.stand)
+pca_data = prcomp(data.stand,scale=T)#12pc
+pca_sdss= prcomp(sdss.stand,scale=T)#all
+
+sumpca=summary(pca_data)
+sumsdss=summary(pca_sdss)
+pca_all=pca_sdss$x
+pca1=pca_data$x[,1:12]
+pca_all
+pca1
+sumpca
+sumsdss
+write.csv(pca_all,file = "pca_all.csv",row.names = TRUE,col.names = TRUE)
+write.csv(pca1,file = "pca1.csv",row.names = TRUE,col.names = TRUE)
+```
+
+2.clustering
+i
+```{r}
+#pam euclidean
+clu_sdss=sdss
+res = data.frame(class = sdss_PCA$class, hca = 0, kmeans = 0, pam = 0)
+s.pam3 = pam(clu_sdss, 3)
+s.pam3
+res$pam = s.pam3$clustering
+pam=table(res$class,res$pam)
+write.csv(pam,file = "pam.csv",row.names = TRUE,col.names = TRUE)
+
+#hca  euclidean
+hc=hclust(dist(clu_sdss, method = "euclidean"))
+res$hca= cutree(hc,3)
+hca=table(res$class,res$hca)
+write.csv(hca,file = "hca.csv",row.names = TRUE,col.names = TRUE)
+
+#K-means
+km3= kmeans(clu_sdss,3,iter.max=100)
+res$kmeans= km3$cluster
+Kmeans=table(res$class, res$kmeans)
+write.csv(Kmeans,file = "Kmeans.csv",row.names = TRUE,col.names = TRUE)
+
+
+res
+#internal metrics
+distance=dist(clu_sdss)
+summ=sapply(res[,2:4],
+FUN = function(x){cluster.stats(distance,clustering = x, silhouette = TRUE)})
+
+summ
+summ[,"hca"]
+summ[,"kmeans"]
+summ[,"pam"]
+#between and within
+table1=data.frame(Between=summ[,"pam"]$average.between,Within=summ[,"pam"]$average.within)
+table2=data.frame(Between=summ[,"hca"]$average.between,Within=summ[,"hca"]$average.within)
+table3=data.frame(Between=summ[,"kmeans"]$average.between,Within=summ[,"kmeans"]$average.within)
+table=rbind(table1,table2,table3)
+row.names(table)=c("PAM","HCA","K-means")
+table
+write.csv(table,file = "internalMetrics.csv",row.names = TRUE,col.names = TRUE,fileEncoding='UTF-8')
+#diameter
+table4=data.frame(PAM=summ[,"pam"]$diameter,HCA=summ[,"hca"]$diameter,Kmeans=summ[,"kmeans"]$diameter)
+row.names(table4)=c("C1","C2","C3")
+table4
+write.csv(table4,file = "diameter.csv",row.names = TRUE,col.names = TRUE)
+#DB index with hca
+intra.inter.hca = cls.scatt.data(clu_sdss, res$hca, dist="manhattan")
+intraclust = c("complete","average","centroid")
+interclust = c("single", "complete", "average","centroid")
+hca.DB=clv.Davies.Bouldin(intra.inter.hca,  intraclust, interclust)
+
+#DB index with k-means
+intra.inter.kmean = cls.scatt.data(clu_sdss, res$kmeans, dist="euclidean")
+kmeans.DB=clv.Davies.Bouldin(intra.inter.kmean,  intraclust, interclust)
+
+#DB index with pam
+intra.inter.pam = cls.scatt.data(clu_sdss, res$pam)
+pam.DB=clv.Davies.Bouldin(intra.inter.pam,  intraclust, interclust)
+
+
+pam.DB
+hca.DB
+kmeans.DB
+write.csv(pam.DB,file = "pam.DB.csv",row.names = TRUE,col.names = TRUE)
+write.csv(hca.DB,file = "hca.DB.csv",row.names = TRUE,col.names = TRUE)
+write.csv(kmeans.DB,file = "kmeans.DB.csv",row.names = TRUE,col.names = TRUE)
+
+
+summ
+#External metrics
+pam_matrice=as.data.frame.array(pam)
+pam_matrice=pam_matrice[,c(1,3,2)]
+hca_matrice=as.data.frame.array(hca)
+hca_matrice=hca_matrice[,c(1,3,2)]
+kmeans_matrice=as.data.frame.array(Kmeans)
+
+
+
+#GALAXY,QSO,STAR
+#recall=TP/TP+FN
+recall_fun=function(x,y,z){
+  rec=data.frame(GALAXY=rbind(x[1,1]/(x[1,1]+x[1,2]+x[1,3]),y[1,1]/(y[1,1]+y[1,2]+y[1,3]),z[1,1]/(z[1,1]+z[1,2]+z[1,3])),QSO=rbind(x[2,2]/(x[2,1]+x[2,2]+x[2,3]),y[2,2]/(y[2,1]+y[2,2]+y[2,3]),z[2,2]/(z[2,1]+z[2,2]+z[2,3])),STAR=rbind(x[3,3]/(x[3,1]+x[3,2]+x[3,3]),y[3,3]/(y[3,1]+y[3,2]+y[3,3]),z[3,3]/(z[3,1]+z[3,2]+z[3,3])))
+  row.names(rec)=c("PAM","HCA","K-means")
+  rec$Avg=(rec[,1]+rec[,2]+rec[,3])/3
+  return(rec)
+}
+recall=recall_fun(pam_matrice,hca_matrice,kmeans_matrice)
+recall
+write.csv(recall,file = "recall.csv",row.names = TRUE,col.names = TRUE)
+
+#Precision=TP/TP+FP
+precision_fun=function(x,y,z){
+  prec=data.frame(GALAXY=rbind(x[1,1]/(x[1,1]+x[2,1]+x[3,1]),y[1,1]/(y[1,1]+y[2,1]+y[3,1]),z[1,1]/(z[1,1]+z[2,1]+z[3,1])),QSO=rbind(x[2,2]/(x[1,2]+x[2,2]+x[3,2]),y[2,2]/(y[1,2]+y[2,2]+y[3,2]),z[2,2]/(z[1,2]+z[2,2]+z[3,2])),STAR=rbind(x[3,3]/(x[1,3]+x[2,3]+x[3,3]),y[3,3]/(y[1,3]+y[2,3]+y[3,3]),z[3,3]/(z[1,3]+z[2,3]+z[3,3])))
+row.names(prec)=c("PAM","HCA","K-means")
+prec$Avg=(prec[,1]+prec[,2]+prec[,3])/3
+return(prec)
+}
+precision=precision_fun(pam_matrice,hca_matrice,kmeans_matrice)
+precision
+write.csv(precision,file = "precision.csv",row.names = TRUE,col.names = TRUE)
+
+
+```
+
+2.2
+```{r}
+clu_sdss
+new_res = data.frame(class = sdss_PCA$class, hca = 0, kmeans = 0, pam = 0)
+m.pam3 = pam(clu_sdss, 3,metric="manhattan",stand=T)
+new_res$pam = m.pam3$clustering
+m_pam=table(new_res$class,new_res$pam)
+pam
+m_pam
+write.csv(m_pam,file = "m_pam.csv",row.names = TRUE,col.names = TRUE)
+
+#hca
+m.hc=hclust(dist(clu_sdss, method = "manhattan"),method = "average")
+new_res$hca= cutree(m.hc,3)
+m_hca=table(new_res$class,new_res$hca)
+hca
+m_hca
+write.csv(m_hca,file = "m_hca.csv",row.names = TRUE,col.names = TRUE)
+
+#K-means
+m.km3= kmeans(clu_sdss,3,iter.max=10,algorithm="Forgy")
+new_res$kmeans= m.km3$cluster
+m_Kmeans=table(new_res$class, new_res$kmeans)
+Kmeans
+m_Kmeans
+write.csv(m_Kmeans,file = "m_Kmeans.csv",row.names = TRUE,col.names = TRUE)
+
+
+#internal metrics
+distance=dist(clu_sdss)
+new_summ=sapply(new_res[,2:4],
+FUN = function(x){cluster.stats(distance,clustering = x, silhouette = TRUE)})
+
+#internal
+#between and within
+table.n1=data.frame(Between=new_summ[,"pam"]$average.between,Within=new_summ[,"pam"]$average.within)
+table.n2=data.frame(Between=new_summ[,"hca"]$average.between,Within=new_summ[,"hca"]$average.within)
+table.n3=data.frame(Between=new_summ[,"kmeans"]$average.between,Within=new_summ[,"kmeans"]$average.within)
+table.n=rbind(table.n1,table.n2,table.n3)
+row.names(table.n)=c("PAM","HCA","K-means")
+table.n
+table
+write.csv(table.n,file = "tablen.csv",row.names = TRUE,col.names = TRUE,fileEncoding='UTF-8')
+#diameter
+table.n4=data.frame(PAM=new_summ[,"pam"]$diameter,HCA=new_summ[,"hca"]$diameter,Kmeans=new_summ[,"kmeans"]$diameter)
+row.names(table.n4)=c("C1","C2","C3")
+table.n4
+table4
+write.csv(table.n4,file = "diametern.csv",row.names = TRUE,col.names = TRUE)
+
+
+#External metrics
+pam_2=as.data.frame.array(m_pam)
+pam_2=pam_2[,c(2,3,1)]
+hca_2=as.data.frame.array(m_hca)
+hca_2=hca_2[,c(1,3,2)]
+kmeans_2=as.data.frame.array(m_Kmeans)
+kmeans_2=kmeans_2[,c(3,1,2)]
+#GALAXY,QSO,STAR
+#recall=TP/TP+FN
+recall.2=recall_fun(pam_2,hca_2,kmeans_2)
+recall.2
+write.csv(recall.2,file = "recall1.csv",row.names = TRUE,col.names = TRUE)
+#Precision=TP/TP+FP
+precision.2=precision_fun(pam_2,hca_2,kmeans_2)
+precision.2
+write.csv(precision.2,file = "precision1.csv",row.names = TRUE,col.names = TRUE)
+```
+
+2.3
+```{r}
+#choose kmeans
+res.kmeans=data.frame(class = sdss_PCA$class, all = 0, part = 0, del = 0)
+res.kmeans.cen=data.frame(class=median_method$class, cen1=0, cen2=0, cen3=0)
+#i
+km3.i= kmeans(pca_all,3,iter.max=100)
+res.kmeans$all= km3.i$cluster
+Kmeans.i=table(res.kmeans$class,res.kmeans$all)
+write.csv(Kmeans.i,file = "Kmeans_i.csv",row.names = TRUE,col.names = TRUE)
+#ii
+km3.ii= kmeans(pca1,3,iter.max=100)
+res.kmeans$part= km3.ii$cluster
+Kmeans.ii=table(res.kmeans$class,res.kmeans$part)
+write.csv(Kmeans.ii,file = "Kmeans_ii.csv",row.names = TRUE,col.names = TRUE)
+#iii
+km3.iii= kmeans(sdss,3,iter.max=100)
+res.kmeans$del= km3.iii$cluster
+Kmeans.iii=table(res.kmeans$class,res.kmeans$del)
+write.csv(Kmeans.iii,file = "Kmeans_iii.csv",row.names = TRUE,col.names = TRUE)
+#iv
+center.i=mean_cen
+center.ii=median_cen
+center.iii=zero_cen
+
+km3.iv= kmeans(center.i,3,iter.max=100)
+res.kmeans.cen$cen1= km3.iv$cluster
+Kmeans.iv=table(res.kmeans.cen$class,res.kmeans.cen$cen1)
+
+km3.v= kmeans(center.ii,3,iter.max=100)
+res.kmeans.cen$cen2= km3.v$cluster
+Kmeans.v=table(res.kmeans.cen$class,res.kmeans.cen$cen2)
+
+km3.vi= kmeans(center.iii,3,iter.max=100)
+res.kmeans.cen$cen3= km3.vi$cluster
+Kmeans.vi=table(res.kmeans.cen$class,res.kmeans.cen$cen3)
+
+
+#v
+#internal
+distance=dist(sdss)
+summ.kmeans=sapply(res.kmeans[,2:4],
+FUN = function(x){cluster.stats(distance,clustering = x, silhouette = TRUE)})
+summ.kmeans.cen=sapply(res.kmeans.cen[,2:4],
+FUN = function(x){cluster.stats(dist(median_method),clustering = x, silhouette = TRUE)})
+
+#between and within
+ktab1=data.frame(Between=summ.kmeans[,"all"]$average.between,Within=summ.kmeans[,"all"]$average.within)
+ktab2=data.frame(Between=summ.kmeans[,"part"]$average.between,Within=summ.kmeans[,"part"]$average.within)
+ktab3=data.frame(Between=summ.kmeans[,"del"]$average.between,Within=summ.kmeans[,"del"]$average.within)
+ktab=rbind(ktab1,ktab2,ktab3)
+row.names(ktab)=c("all","part","del")
+
+ktab4=data.frame(Between=summ.kmeans.cen[,"cen1"]$average.between,Within=summ.kmeans.cen[,"cen1"]$average.within)
+ktab5=data.frame(Between=summ.kmeans.cen[,"cen2"]$average.between,Within=summ.kmeans.cen[,"cen2"]$average.within)
+ktab6=data.frame(Between=summ.kmeans.cen[,"cen3"]$average.between,Within=summ.kmeans.cen[,"cen3"]$average.within)
+ktab.cen=rbind(ktab4,ktab5,ktab6)
+row.names(ktab.cen)=c("cen1","cen2","cen3")
+write.csv(ktab.cen,file = "internal_kmeans.cen.csv",row.names = TRUE,col.names = TRUE,fileEncoding='UTF-8')
+ktab.cen
+#diameter
+ktab4=data.frame(all=summ.kmeans[,"all"]$diameter,part=summ.kmeans[,"part"]$diameter,del=summ.kmeans[,"del"]$diameter)
+row.names(ktab4)=c("C1","C2","C3")
+ktab4
+write.csv(ktab4,file = "diameter_keans.csv",row.names = TRUE,col.names = TRUE)
+ktab5=data.frame(cen1=summ.kmeans.cen[,"cen1"]$diameter,cen2=summ.kmeans.cen[,"cen2"]$diameter,cen3=summ.kmeans.cen[,"cen3"]$diameter)
+row.names(ktab5)=c("C1","C2","C3")
+write.csv(ktab5,file = "diameter_k5.csv",row.names = TRUE,col.names = TRUE)
+#External metrics
+Kmeans.i
+Kmeans.ii
+Kmeans.iii
+Kmeans.iv
+Kmeans.v
+Kmeans.vi
+matrice.i=as.data.frame.array(Kmeans.i)
+matrice.i=matrice.i[,c(3,2,1)]
+matrice.ii=as.data.frame.array(Kmeans.ii)
+matrice.iii=as.data.frame.array(Kmeans.iii)
+matrice.iii=matrice.iii[,c(1,3,2)]
+matrice.iv=as.data.frame.array(Kmeans.iv)
+matrice.iv=matrice.iv[,c(3,2,1)]
+matrice.v=as.data.frame.array(Kmeans.v)
+matrice.vi=as.data.frame.array(Kmeans.vi)
+
+write.csv(matrice.iv,file = "matrice_iv.csv",row.names = TRUE,col.names = TRUE)
+write.csv(matrice.v,file = "matrice_v.csv",row.names = TRUE,col.names = TRUE)
+write.csv(matrice.vi,file = "matrice_vi.csv",row.names = TRUE,col.names = TRUE)
+matrice.i
+matrice.ii
+matrice.iii
+#GALAXY,QSO,STAR
+#recall=TP/TP+FN
+recall2=recall_fun(matrice.i,matrice.ii,matrice.iii)
+row.names(recall2)=c("all","part","del")
+recall3=recall_fun(matrice.iv,matrice.v,matrice.vi)
+row.names(recall3)=c("cen1","cen2","cen3")
+recall2
+recall3
+write.csv(recall2,file = "recall2.csv",row.names = TRUE,col.names = TRUE)
+write.csv(recall3,file = "recall3.csv",row.names = TRUE,col.names = TRUE)
+#Precision=TP/TP+FP
+precision2=precision_fun(matrice.i,matrice.ii,matrice.iii)
+row.names(precision2)=c("all","part","del")
+precision3=precision_fun(matrice.iv,matrice.v,matrice.vi)
+row.names(precision3)=c("cen1","cen2","cen3")
+precision2$Avg=(precision2[,1]+precision2[,2]+precision2[,3])/3
+precision3$Avg=(precision3[,1]+precision3[,2]+precision3[,3])/3
+precision2
+
+write.csv(precision2,file = "precision2.csv",row.names = TRUE,col.names = TRUE)
+write.csv(precision3,file = "precision3.csv",row.names = TRUE,col.names = TRUE)
+```
+3.1
+```{r}
+classfication_sdss=sdss_PCA[,c(4:12,14,15,18,20,22)]
+
+write.csv(classfication_sdss,file = "classfication_sdss.csv",row.names = TRUE,col.names = TRUE)
+
+
+```
+3.3
+```{r}
+pca_all_classification=pca_all#all pcs
+pca_all_classification=as.data.frame(pca_all_classification)
+pca_all_classification$class=sdss_PCA$class
+write.csv(pca_all_classification,file = "pca_all_classification.csv",row.names = TRUE,col.names = TRUE)
+pca12_classification=pca1 #12 pcs
+pca12_classification=as.data.frame(pca12_classification)
+pca12_classification$class=sdss_PCA$class
+write.csv(pca12_classification,file = "pca12_classification.csv",row.names = TRUE,col.names = TRUE)
+sdss_classification=beifen_sdss#del
+sdss_classification=sdss_classification[,c(4:12,14,15,18,20,22)]
+write.csv(sdss_classification,file = "sdss_classification.csv",row.names = TRUE,col.names = TRUE)
+
+
+
+mean_nor
+median_nor
+zero_nor
+write.csv(mean_nor,file = "mean_nor.csv",row.names = TRUE,col.names = TRUE)
+write.csv(median_nor,file = "median_nor.csv",row.names = TRUE,col.names = TRUE)
+write.csv(zero_nor,file = "zero_nor.csv",row.names = TRUE,col.names = TRUE)
+```
+
